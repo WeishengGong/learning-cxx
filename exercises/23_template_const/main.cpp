@@ -6,10 +6,16 @@
 template<unsigned int N, class T>
 struct Tensor {
     unsigned int shape[N];
+    unsigned int stride[N];
     T *data;
 
     Tensor(unsigned int const shape_[N]) {
+        std::memcpy(shape, shape_, N * sizeof(unsigned int));
         unsigned int size = 1;
+        for (int i = N - 1; i >= 0; i--) {
+            stride[i] = size;
+            size *= shape_[i];
+        }
         // TODO: 填入正确的 shape 并计算 size
         data = new T[size];
         std::memset(data, 0, size * sizeof(T));
@@ -35,6 +41,7 @@ private:
         for (unsigned int i = 0; i < N; ++i) {
             ASSERT(indices[i] < shape[i], "Invalid index");
             // TODO: 计算 index
+            index += stride[i] * indices[i];
         }
         return index;
     }

@@ -8,7 +8,8 @@ struct Tensor4D {
     T *data;
 
     Tensor4D(unsigned int const shape_[4], T const *data_) {
-        unsigned int size = 1;
+        std::memcpy(shape, shape_, 4 * sizeof(unsigned int));
+        unsigned int size = shape_[0] * shape_[1] * shape_[2] * shape_[3];
         // TODO: 填入正确的 shape 并计算 size
         data = new T[size];
         std::memcpy(data, data_, size * sizeof(T));
@@ -27,7 +28,40 @@ struct Tensor4D {
     // 例如，`this` 形状为 `[1, 2, 3, 4]`，`others` 形状为 `[1, 2, 1, 4]`，
     // 则 `this` 与 `others` 相加时，3 个形状为 `[1, 2, 1, 4]` 的子张量各自与 `others` 对应项相加。
     Tensor4D &operator+=(Tensor4D const &others) {
-        // TODO: 实现单向广播的加法
+        for (int d = 0; d < 4; ++d) {
+            ASSERT(shape[d] == others.shape[d] || others.shape[d] == 1,
+                   "Shape mismatch: others dimension must be 1 or equal to this");
+        }
+        unsigned int this_stride[4];
+        this_stride[3] = 1;
+        this_stride[2] = shape[3];
+        this_stride[1] = shape[2] * this_stride[2];
+        this_stride[0] = shape[1] * this_stride[1];
+
+        unsigned int other_stride[4];
+        other_stride[3] = 1;
+        other_stride[2] = others.shape[3];
+        other_stride[1] = others.shape[2] * other_stride[2];
+        other_stride[0] = others.shape[1] * other_stride[1];
+
+        for (unsigned int i = 0; i < shape[0]; ++i) {
+            unsigned int oi = (others.shape[0] == 1) ? 0 : i;
+            for (unsigned int j = 0; j < shape[1]; ++j) {
+                unsigned int oj = (others.shape[1] == 1) ? 0 : j;
+                for (unsigned int k = 0; k < shape[2]; ++k) {
+                    unsigned int ok = (others.shape[2] == 1) ? 0 : k;
+                    for (unsigned int l = 0; l < shape[3]; ++l) {
+                        unsigned int ol = (others.shape[3] == 1) ? 0 : l;
+
+                        unsigned int this_idx = i * this_stride[0] + j * this_stride[1] +
+                                                k * this_stride[2] + l * this_stride[3];
+                        unsigned int other_idx = oi * other_stride[0] + oj * other_stride[1] +
+                                                 ok * other_stride[2] + ol * other_stride[3];
+                        data[this_idx] += others.data[other_idx];
+                    }
+                }
+            }
+        }
         return *this;
     }
 };
